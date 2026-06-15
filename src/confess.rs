@@ -1,10 +1,12 @@
 use crate::{Context, Data, Error};
 use futures::{StreamExt, stream};
-use poise::serenity_prelude::{self as serenity, CacheHttp, ChannelId};
+use poise::serenity_prelude::{self as serenity, GuildChannel, Http};
 use rand::seq::IndexedRandom;
 use serenity::CreateMessage;
 use std::time::Duration;
 use tokio::time;
+
+const INTERVAL_IN_MINUTES: u64 = 10;
 
 #[poise::command(
     slash_command,
@@ -16,13 +18,15 @@ pub async fn set_channel(
     ctx: Context<'_>,
     #[description = "Server text channel"]
     #[channel_types("Text")]
-    channel: serenity::GuildChannel,
+    input_channel: serenity::GuildChannel,
 ) -> Result<(), Error> {
     {
-        let mut channel_id = ctx.data().channel_id.lock().unwrap();
-        *channel_id = channel.id.clone();
-    };
-    ctx.reply(format!("Set channel {}!", channel.name)).await?;
+        let data = ctx.data();
+        let mut channel = data.channel.lock().unwrap();
+        *channel = input_channel.clone();
+    }
+    ctx.reply(format!("Set channel {}!", input_channel.base.name))
+        .await?;
     Ok(())
 }
 
@@ -42,7 +46,7 @@ pub async fn confess(
     Ok(())
 }
 
-async fn confessions_task(data: Data, http: impl CacheHttp) {
+async fn confessions_task(data: &Data, http: &Http) {
     let mut rng = rand::rng();
     let confessions = data.confessions.lock().unwrap().clone();
     let rnd_confession = confessions.choose(&mut rng);
@@ -50,18 +54,17 @@ async fn confessions_task(data: Data, http: impl CacheHttp) {
         println!("No confession to send");
         return;
     }
-    let channel_id = data.channel_id.lock().unwrap().clone();
-    send_confession_message(channel_id, http, rnd_confession.unwrap().into()).await;
+    let channel = data.channel.lock().unwrap().clone();
+    send_confession_message(channel, http, rnd_confession.unwrap().into()).await;
 }
 
-async fn send_confession_message(channel_id: ChannelId, http: impl CacheHttp, confession: String) {
+async fn send_confession_message(channel: GuildChannel, http: &Http, confession: String) {
     let builder = CreateMessage::new().content(confession);
-    let _ = channel_id.send_message(http, builder).await;
+    let _ = channel.send_message(http, builder).await;
 }
 
-pub async fn start_confession_scheduler(data: Data, http: impl CacheHttp) {
-    let interval = time::interval(Duration::from_mins(10));
-
+pub async fn start_confession_scheduler(data: &Data, http: &Http) {
+    let interval = time::interval(Duration::from_mins(INTERVAL_IN_MINUTES));
     let forever = stream::unfold(interval, |mut interval| async {
         interval.tick().await;
         confessions_task(data, http).await;
