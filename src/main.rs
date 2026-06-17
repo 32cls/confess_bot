@@ -3,7 +3,7 @@ mod confess;
 use dotenv::dotenv;
 use poise::serenity_prelude::{self as serenity, GuildChannel};
 use serenity::GuildId;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
@@ -25,7 +25,7 @@ async fn register_commands(ctx: Context<'_>) -> Result<(), Error> {
     let commands = &ctx.framework().options().commands;
     poise::builtins::register_in_guild(ctx.http(), commands, guild_id).await?;
     ctx.say("Successfully registered slash commands!").await?;
-    confess::start_confession_scheduler(&ctx.data(), ctx.http()).await;
+    //confess::start_confession_scheduler(&ctx.data(), ctx.http()).await;
     Ok(())
 }
 
@@ -44,6 +44,10 @@ async fn main() {
         serenity::GatewayIntents::non_privileged() | serenity::GatewayIntents::MESSAGE_CONTENT;
 
     let client = serenity::ClientBuilder::new(token, intents)
+        .data(Arc::new(Data {
+            channel: Mutex::new(GuildChannel::default()),
+            confessions: Mutex::new(Vec::new()),
+        }))
         .framework(Box::new(poise::Framework::new(options)))
         .await;
 
