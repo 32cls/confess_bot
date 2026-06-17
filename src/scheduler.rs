@@ -7,7 +7,7 @@ use redis::AsyncCommands;
 use std::time::Duration;
 use tokio::time;
 
-const INTERVAL_IN_MINUTES: u64 = 1;
+const INTERVAL_IN_MINUTES: u64 = 5;
 
 async fn confessions_task(ctx: &SerenityContext) {
     let mut conn = ctx.data::<Data>().redis_client.clone();
