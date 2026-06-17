@@ -6,7 +6,9 @@ edition = "2024"
 [dependencies]
 dotenv = "0.15.0"
 futures = "0.3.32"
+log = "0.4.32"
 poise = { git = "https://github.com/serenity-rs/poise.git", branch = "serenity-next" }
 rand = "0.10.1"
 tokio = { version = "1.21.2", features = ["macros", "rt-multi-thread"] }
 tracing-subscriber = "0.3.23"
+redis = { version = "0.27", features = ["tokio-comp", "connection-manager"] }
